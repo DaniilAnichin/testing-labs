@@ -1,0 +1,64 @@
+import unittest
+
+from exceptions.manager import BaseExceptionManager
+
+
+class BaseExceptionManagerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.manager = BaseExceptionManager('config.json')
+        self.exceptions = [RecursionError(), TypeError(), ValueError()]
+        self.regular_exceptions = [IndexError(), NotImplementedError()]
+
+    def test_BaseExceptionManager_init(self):
+        assert not any(self.manager.counters.values()), \
+            'Some counters are not initially set to 0'
+
+    def test_BaseExceptionManager_wrong_base(self):
+        self.assertRaises(TypeError, self.manager.process_exception,
+                          {'message': 'Error imitation'})
+
+    def test_BaseExceptionManager_critical(self):
+        for exception in self.exceptions:
+            with self.subTest(f'Testing {exception} is critical'):
+                is_critical = self.manager.is_critical(exception)
+                assert is_critical is True, f'{exception!r} is not critical'
+
+    def test_BaseExceptionManager_critical_wrong(self):
+        for exception in self.regular_exceptions:
+            with self.subTest(f'Testing {exception} is not critical'):
+                is_critical = self.manager.is_critical(exception)
+                assert is_critical is False, f'{exception!r} is critical'
+
+    def test_BaseExceptionManager_process_critical(self):
+        for exception in self.exceptions:
+            with self.subTest(f'Testing {exception!r} increases counter'):
+                before_counter = self.manager.counters['critical']
+                self.manager.process_exception(exception)
+                delta = self.manager.counters['critical'] - before_counter
+                assert delta == 1, f'Critical counter increased by {delta} when expected by 1 after {exception!r}'
+
+    def test_BaseExceptionManager_process_regular(self):
+        for exception in self.regular_exceptions:
+            with self.subTest(f'Testing {exception!r} not increases counter'):
+                before_counter = self.manager.counters['regular']
+                self.manager.process_exception(exception)
+                delta = self.manager.counters['regular'] - before_counter
+                assert delta == 1, f'Regular counter increased by {delta} when expected by 1 after {exception!r}'
+
+    def test_BaseExceptionManager_process_io(self):
+        def fake_send_report(exception):
+            raise IOError(f'Cannot send {exception!r};')
+        self.manager.send_report = fake_send_report
+        for exception in self.exceptions:
+            with self.subTest(f'Testing {exception!r} + IOError() increases both counters'):
+                before_counter = self.manager.counters['io']
+                before_crit = self.manager.counters['critical']
+                self.manager.process_exception(exception)
+                delta = self.manager.counters['io'] - before_counter
+                assert delta == 1, f'IO counter increased by {delta} when expected by 1 after {exception!r}'
+                delta = self.manager.counters['critical'] - before_crit
+                assert delta == 1, f'Critical counter increased by {delta} when expected by 1 after {exception!r}'
+
+
+if __name__ == '__main__':
+    unittest.main()

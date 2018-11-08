@@ -1,0 +1,3 @@
+{
+  "critical": ["RecursionError", "TypeError", "ValueError"]
+}
