@@ -1,11 +1,32 @@
 import unittest
 
 from exceptions.manager import BaseExceptionManager
+from exceptions.manager.interfaces import CriticalChecker
+
+
+class IsCriticalTestCase(unittest.TestCase):
+    def setUp(self):
+        self.critical_checker = CriticalChecker(config_path='config.json')
+        self.exceptions = [RecursionError(), TypeError(), ValueError()]
+        self.regular_exceptions = [IndexError(), NotImplementedError()]
+
+    def test_IsCritical_critical(self):
+        for exception in self.exceptions:
+            with self.subTest(f'Testing {exception!r} is critical'):
+                is_critical = self.critical_checker.is_critical(exception)
+                assert is_critical is True, f'{exception!r} is not critical'
+
+    def test_IsCritical_critical_wrong(self):
+        for exception in self.regular_exceptions:
+            with self.subTest(f'Testing {exception!r} is not critical'):
+                is_critical = self.critical_checker.is_critical(exception)
+                assert is_critical is False, f'{exception!r} is critical'
 
 
 class BaseExceptionManagerTestCase(unittest.TestCase):
     def setUp(self):
-        self.manager = BaseExceptionManager('config.json')
+        self.critical_checker = CriticalChecker(config_path='config.json')
+        self.manager = BaseExceptionManager(self.critical_checker)
         self.exceptions = [RecursionError(), TypeError(), ValueError()]
         self.regular_exceptions = [IndexError(), NotImplementedError()]
 
@@ -16,18 +37,6 @@ class BaseExceptionManagerTestCase(unittest.TestCase):
     def test_BaseExceptionManager_wrong_base(self):
         self.assertRaises(TypeError, self.manager.process_exception,
                           {'message': 'Error imitation'})
-
-    def test_BaseExceptionManager_critical(self):
-        for exception in self.exceptions:
-            with self.subTest(f'Testing {exception} is critical'):
-                is_critical = self.manager.is_critical(exception)
-                assert is_critical is True, f'{exception!r} is not critical'
-
-    def test_BaseExceptionManager_critical_wrong(self):
-        for exception in self.regular_exceptions:
-            with self.subTest(f'Testing {exception} is not critical'):
-                is_critical = self.manager.is_critical(exception)
-                assert is_critical is False, f'{exception!r} is critical'
 
     def test_BaseExceptionManager_process_critical(self):
         for exception in self.exceptions:

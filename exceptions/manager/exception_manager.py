@@ -1,32 +1,17 @@
 import json
 from logging import getLogger
 
+from .interfaces import BaseCriticalChecker
 
 logger = getLogger('main')
 
 
 class BaseExceptionManager(object):
-    exception_groups: list = ['critical', 'regular', 'io']
-    group_types: dict = None
     counters: dict = None
 
-    def __init__(self, config_path: str=None):
-        self.counters = {key: 0 for key in self.exception_groups}
-
-        if config_path:
-            with open(config_path, 'r') as f:
-                data = json.load(f)
-            self.group_types = {
-                key: tuple(
-                    [
-                        eval(err)
-                        for err
-                        in data.get(key, [])
-                    ]
-                )
-                for key
-                in self.exception_groups
-            }
+    def __init__(self, critical_checker: BaseCriticalChecker):
+        self.critical_checker = critical_checker
+        self.counters = {key: 0 for key in self.critical_checker.exception_groups}
 
     def process_exception(self, exception: Exception):
         if not isinstance(exception, Exception):
@@ -42,9 +27,7 @@ class BaseExceptionManager(object):
             self.counters['io'] += 1
 
     def is_critical(self, exception: Exception) -> bool:
-        if isinstance(exception, self.group_types['critical']):
-            return True
-        return False
+        return self.critical_checker.is_critical(exception)
 
     def send_report(self, exception: Exception):
         logger.error(f'Note: "{exception!r}" occurred!')
