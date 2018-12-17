@@ -1,12 +1,13 @@
 import unittest
 
 from exceptions.manager import BaseExceptionManager
-from exceptions.manager.interfaces import CriticalChecker
+from exceptions.manager.interfaces import CriticalChecker, BaseReportSender, ServerMailReportSender
 
 
 class IsCriticalTestCase(unittest.TestCase):
     def setUp(self):
-        self.critical_checker = CriticalChecker(config_path='config.json')
+        self.critical_checker = CriticalChecker(group_types={
+            "critical": [RecursionError, TypeError, ValueError]})
         self.exceptions = [RecursionError(), TypeError(), ValueError()]
         self.regular_exceptions = [IndexError(), NotImplementedError()]
 
@@ -26,7 +27,8 @@ class IsCriticalTestCase(unittest.TestCase):
 class BaseExceptionManagerTestCase(unittest.TestCase):
     def setUp(self):
         self.critical_checker = CriticalChecker(config_path='config.json')
-        self.manager = BaseExceptionManager(self.critical_checker)
+        self.report_sender = ServerMailReportSender()
+        self.manager = BaseExceptionManager(self.critical_checker, self.report_sender)
         self.exceptions = [RecursionError(), TypeError(), ValueError()]
         self.regular_exceptions = [IndexError(), NotImplementedError()]
 
@@ -55,9 +57,10 @@ class BaseExceptionManagerTestCase(unittest.TestCase):
                 assert delta == 1, f'Regular counter increased by {delta} when expected by 1 after {exception!r}'
 
     def test_BaseExceptionManager_process_io(self):
-        def fake_send_report(exception):
-            raise IOError(f'Cannot send {exception!r};')
-        self.manager.send_report = fake_send_report
+        class FakeReporter(BaseReportSender):
+            def send_report(self, exception):
+                raise IOError(f'Cannot send {exception!r};')
+        self.manager.report_sender = FakeReporter()
         for exception in self.exceptions:
             with self.subTest(f'Testing {exception!r} + IOError() increases both counters'):
                 before_counter = self.manager.counters['io']

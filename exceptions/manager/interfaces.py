@@ -1,11 +1,11 @@
 import json
 from logging import getLogger
-
+from abc import ABC
 
 logger = getLogger('main')
 
 
-class BaseCriticalChecker(object):
+class BaseCriticalChecker(ABC):
     exception_groups: list = ['critical', 'regular', 'io']
     group_types: dict = None
 
@@ -30,7 +30,12 @@ class CriticalChecker(BaseCriticalChecker):
                 in self.exception_groups
             }
         elif group_types:
-            self.group_types = group_types.copy()
+            self.group_types = {
+                key: tuple(group_types[key])
+                for key
+                in group_types.keys()
+                if key in self.exception_groups
+            }
         else:
             raise ValueError('Either group_types or config_path should be provided')
 
@@ -38,3 +43,16 @@ class CriticalChecker(BaseCriticalChecker):
         if isinstance(exception, self.group_types['critical']):
             return True
         return False
+
+
+class BaseReportSender(ABC):
+    def send_report(self, exception):
+        raise NotImplementedError
+
+
+class ServerMailReportSender(BaseReportSender):
+    def send_report(self, exception: Exception):
+        logger.error(f'Note: "{exception!r}" occurred!')
+        if False:
+            # Simulating IOError
+            raise IOError
