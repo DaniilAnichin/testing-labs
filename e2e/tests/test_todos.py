@@ -1,3 +1,4 @@
+import os
 import unittest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -7,7 +8,7 @@ from e2e.pages import MainPage
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
-CHROME_DRIVER_PATH = '/home/daniil/3dparty/chromedriver'
+CHROME_DRIVER_PATH = os.environ.get('CHROME_DRIVER_PATH', '/home/daniil/3dparty/chromedriver')
 
 
 class PythonOrgSearch(unittest.TestCase):
