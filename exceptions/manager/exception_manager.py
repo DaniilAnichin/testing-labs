@@ -24,4 +24,5 @@ class BaseExceptionManager(object):
             else:
                 self.counters['regular'] += 1
         except IOError:
-            self.counters['io'] += 1
+            pass
+            # self.counters['io'] += 1
